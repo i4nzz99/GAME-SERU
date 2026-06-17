@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Game: Neon Catcher Mega Shop Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #0d0e15;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            padding: 10px;
+        }
+
+        .game-wrapper {
+            background: #181a26;
+            border: 2px solid #00f2fe;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.2);
+            text-align: center;
+            width: 100%;
+            max-width: 440px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            color: #00f2fe;
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+        }
+
+        .btn-shop-toggle {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 1.3rem;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .btn-shop-toggle:active { transform: scale(0.9); }
+
+        .hud-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .hud-box {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .hud-box span { font-weight: bold; }
+
+        #gameCanvas {
+            background: #212433;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto 15px auto;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .controls-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            padding: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #fff;
+            touch-action: none;
+        }
+
+        .btn-left { background: linear-gradient(135deg, #ff007f, #7928ca); }
+        .btn-right { background: linear-gradient(135deg, #7928ca, #ff007f); }
+        
+        .btn-system {
+            grid-column: span 2;
+            background: #24283b;
+            border: 1px solid #414868;
+            padding: 12px;
+            font-size: 0.9rem;
+        }
+
+        /* MENU TOKO RAYA */
+        .shop-window {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(13, 14, 21, 0.98);
+            z-index: 20;
+            padding: 20px;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .shop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #414868;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        .shop-close {
+            background: #ff007f;
+            border: none;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .shop-section-title {
+            text-align: left;
+            font-size: 0.9rem;
+            color: #00f2fe;
+            margin: 10px 0 5px 0;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .shop-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1c1f30;
+            border: 1px solid #323652;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .item-preview {
+            width: 30px;
+            height: 25px;
+            border-radius: 4px;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        .item-info {
+            flex-grow: 1;
+            text-align: left;
+            padding-left: 15px;
+        }
+
+        .item-name { font-weight: bold; font-size: 0.9rem; }
+        .item-price { font-size: 0.8rem; color: #ffd700; }
+
+        .btn-buy {
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #00f2fe;
+            color: #000;
+        }
+        .btn-buy.owned { background: #e2e2e2; color: #000; }
+        .btn-buy.active-skin { background: #2ecc71; color: #fff; }
+
+        /* POP-UP HADIAH */
+        .reward-popup {
+            display: none;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 22, 33, 0.98);
+            border: 3px solid #ffd700;
+            border-radius: 15px;
+            padding: 25px;
+            width: 85%;
+            z-index: 10;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .money-visual {
+            width: 180px; height: 85px;
+            background: #2ecc71;
+            border: 4px double #fff;
+            margin: 15px auto;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+        }
+
+        .money-val { font-size: 1.3rem; font-weight: 900; }
+
+        .btn-claim {
+            background: #ffd700; color: #111;
+            padding: 10px 25px; border: none; border-radius: 5px;
+            font-weight: bold; cursor: pointer; margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-wrapper">
+        <div class="header-area">
+            <h1>NEON CATCHER</h1>
+            <button class="btn-shop-toggle" id="shopBtn" title="Buka Toko Variasi">🛒</button>
+        </div>
+
+        <div class="hud-container">
+            <div class="hud-box">Skor: <span id="scoreDisplay" style="color: #00f2fe;">0</span></div>
+            <div class="hud-box">Nyawa: <span id="livesDisplay" style="color: #ff007f;">3</span></div>
+            <div class="hud-box" style="grid-column: span 2; background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.2);">
+                Isi Dompet (Tabungan): <span id="walletDisplay" style="color: #ffd700;">Rp 0</span>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="350" height="350"></canvas>
+
+        <div class="controls-group">
+            <button class="btn btn-left" id="leftBtn">◀ TAHAN KIRI</button>
+            <button class="btn btn-right" id="rightBtn">TAHAN KANAN ▶</button>
+            <button class="btn btn-system" id="startResetBtn">Mulai Game</button>
+        </div>
+
+        <div class="shop-window" id="shopWindow">
+            <div class="shop-header">
+                <h2>🛒 TOKO VARIASI SKIN</h2>
+                <button class="shop-close" id="closeShopBtn">X Keluar</button>
+            </div>
+            <p style="font-size: 0.85rem; color: #ffd700; margin-bottom: 10px;">Tabungan Uangmu: <span id="shopWallet">Rp 0</span></p>
+            
+            <div class="shop-section-title">Kategori 1: Skin Balok Jatuh</div>
+            <div id="blockSkinsContainer"></div>
+
+            <div class="shop-section-title">Kategori 2: Skin Keranjang Basket</div>
+            <div id="basketSkinsContainer"></div>
+        </div>
+
+        <div class="reward-popup" id="rewardPopup">
+            <h3 style="color:#ffd700; margin-bottom:10px;">🎉 GAME OVER! 🎉</h3>
+            <p id="rewardText">Kamu mendapatkan hadiah uang tunai sebesar:</p>
+            <div class="money-visual">
+                <div style="font-size:0.6rem; opacity:0.8;">BANK MAINAN</div>
+                <div class="money-val" id="moneyAmount">Rp 0</div>
+            </div>
+            <button class="btn-claim" id="claimBtn">Simpan Ke Tabungan</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const livesDisplay = document.getElementById('livesDisplay');
+        const walletDisplay = document.getElementById('walletDisplay');
+        const shopWallet = document.getElementById('shopWallet');
+        const startResetBtn = document.getElementById('startResetBtn');
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
+        const shopBtn = document.getElementById('shopBtn');
+        const shopWindow = document.getElementById('shopWindow');
+        const closeShopBtn = document.getElementById('closeShopBtn');
+        const blockSkinsContainer = document.getElementById('blockSkinsContainer');
+        const basketSkinsContainer = document.getElementById('basketSkinsContainer');
+        const rewardPopup = document.getElementById('rewardPopup');
+        const rewardText = document.getElementById('rewardText');
+        const moneyAmount = document.getElementById('moneyAmount');
+        const claimBtn = document.getElementById('claimBtn');
+
+        let gameActive = false;
+        let score = 0;
+        let lives = 3;
+        let animationId;
+        let currentPrizePool = 0;
+
+        // TABUNGAN UNLIMITED (Bisa bertambah tanpa batasan angka maksimal)
+        let walletMoney = 0; 
+
+        // Setelan Warna Terpilih Saat Ini
+        let selectedBlockColor = '#9d4edd';
+        let selectedBasketColor = '#00f2fe';
+
+        // DATABASE SKIN BALOK
+        const blockSkins = [
+            { id: 'b_purple', name: 'Balok Nebula (Ungu)', price: 0, color: '#9d4edd', owned: true },
+            { id: 'b_red', name: 'Balok Cyberpunk (Merah)', price: 10000, color: '#ff0055', owned: false },
+            { id: 'b_gold', name: 'Emas Supersonik (Glow)', price: 25000, color: '#ffd700', owned: false }
+        ];
+
+        // DATABASE SKIN BASKET / MANGKOK
+        const basketSkins = [
+            { id: 'k_cyan', name: 'Keranjang Cyan (Bawaan)', price: 0, color: '#00f2fe', owned: true },
+            { id: 'k_pink', name: 'Keranjang Pink Cyber', price: 15000, color: '#ff007f', owned: false },
+            { id: 'k_gold', name: 'Mangkok Emas Sultan', price: 35000, color: '#ffaa00', owned: false }
+        ];
+
+        const inputState = { left: false, right: false };
+
+        const basket = {
+            x: canvas.width / 2 - 35, y: canvas.height - 25,
+            width: 70, height: 15, speed: 7
+        };
+
+        const block = { x: 0, y: 0, size: 20, speed: 3 };
+
+        function drawBasket() {
+            ctx.fillStyle = selectedBasketColor;
+            ctx.shadowBlur = selectedBasketColor === '#ffaa00' ? 15 : 0; // Efek glow jika pakai basket emas
+            ctx.shadowColor = selectedBasketColor;
+            ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+            ctx.shadowBlur = 0;
+        }
+
+        function drawBlock() {
+            ctx.fillStyle = selectedBlockColor;
+            ctx.shadowBlur = selectedBlockColor === '#ffd700' ? 15 : 8;
+            ctx.shadowColor = selectedBlockColor;
+            ctx.fillRect(block.x, block.y, block.size, block.size);
+            ctx.shadowBlur = 0;
+        }
+
+        function resetBlock() {
+            block.x = Math.random() * (canvas.width - block.size);
+            block.y = 0;
+            block.speed = 3 + (score * 0.25);
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (inputState.left && basket.x > 0) basket.x -= basket.speed;
+            if (inputState.right && basket.x < canvas.width - basket.width) basket.x += basket.speed;
+
+            block.y += block.speed;
+
+            if (block.y + block.size >= basket.y && block.x + block.size >= basket.x && block.x <= basket.x + basket.width) {
+                score++;
+                scoreDisplay.textContent = score;
+                resetBlock();
+            }
+
+            if (block.y > canvas.height) {
+                lives--;
+                livesDisplay.textContent = lives;
+                if (lives <= 0) {
+                    gameOver();
+                    return;
+                }
+                resetBlock();
+            }
+
+            drawBasket();
+            drawBlock();
+            animationId = requestAnimationFrame(update);
+        }
+
+        function gameOver() {
+            gameActive = false;
+            cancelAnimationFrame(animationId);
+            inputState.left = false;
+            inputState.right = false;
+
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#ff007f';
+            ctx.font = 'bold 24px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
+
+            // Perhitungan Hadiah: Tanpa batas penambahan uang masuk tabungan
+            currentPrizePool = 0;
+            if (score >= 10) {
+                let steps = Math.floor((score - 10) / 5);
+                currentPrizePool = 5000 + (steps * 5000);
+            }
+
+            if (currentPrizePool > 0) {
+                rewardText.innerHTML = `Skor akhir kamu: <b>${score}</b>.<br>Uang berhasil dicetak:`;
+                moneyAmount.textContent = `Rp ${currentPrizePool.toLocaleString('id-ID')}`;
+                rewardPopup.style.display = 'block';
+            } else {
+                startResetBtn.textContent = 'Main Lagi';
+            }
+        }
+
+        function startGame() {
+            score = 0; lives = 3; gameActive = true;
+            scoreDisplay.textContent = score;
+            livesDisplay.textContent = lives;
+            basket.x = canvas.width / 2 - 35;
+            rewardPopup.style.display = 'none';
+            shopWindow.style.display = 'none';
+            resetBlock();
+            startResetBtn.textContent = 'Reset Game';
+            update();
+        }
+
+        // --- SISTEM PEMBUAT DAFTAR BELANJA DI TOKO ---
+        function renderShop() {
+            shopWallet.textContent = `Rp ${walletMoney.toLocaleString('id-ID')}`;
+            walletDisplay.textContent = `Rp ${walletMoney.toLocaleString('id-ID')}`;
+            
+            // Render Bagian Balok
+            blockSkinsContainer.innerHTML = '';
+            blockSkins.forEach((skin) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'shop-item';
+                let btnHTML = skin.owned ? 
+                    (selectedBlockColor === skin.color ? `<button class="btn-buy active-skin">DIGUNAKAN</button>` : `<button class="btn-buy owned" onclick="equipItem('block', '${skin.color}')">PAKAI</button>`) :
+                    `<button class="btn-buy" onclick="buyItem('block', '${skin.id}', ${skin.price})">BELI</button>`;
+                
+                itemDiv.innerHTML = `<div class="item-preview" style="background:${skin.color}"></div><div class="item-info"><div class="item-name">${skin.name}</div><div class="item-price">${skin.price===0?'Gratis':'Rp '+skin.price.toLocaleString('id-ID')}</div></div>${btnHTML}`;
+                blockSkinsContainer.appendChild(itemDiv);
+            });
+
+            // Render Bagian Basket/Mangkok
+            basketSkinsContainer.innerHTML = '';
+            basketSkins.forEach((skin) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'shop-item';
+                let btnHTML = skin.owned ? 
+                    (selectedBasketColor === skin.color ? `<button class="btn-buy active-skin">DIGUNAKAN</button>` : `<button class="btn-buy owned" onclick="equipItem('basket', '${skin.color}')">PAKAI</button>`) :
+                    `<button class="btn-buy" onclick="buyItem('basket', '${skin.id}', ${skin.price})">BELI</button>`;
+                
+                itemDiv.innerHTML = `<div class="item-preview" style="background:${skin.color}; height:10px;"></div><div class="item-info"><div class="item-name">${skin.name}</div><div class="item-price">${skin.price===0?'Gratis':'Rp '+skin.price.toLocaleString('id-ID')}</div></div>${btnHTML}`;
+                basketSkinsContainer.appendChild(itemDiv);
+            });
+        }
+
+        // Fungsi Global Aksi Beli dan Pakai Barang Toko
+        window.buyItem = function(type, id, price) {
+            if (walletMoney >= price) {
+                walletMoney -= price;
+                if (type === 'block') {
+                    const skin = blockSkins.find(s => s.id === id);
+                    skin.owned = true; selectedBlockColor = skin.color;
+                } else {
+                    const skin = basketSkins.find(s => s.id === id);
+                    skin.owned = true; selectedBasketColor = skin.color;
+                }
+                renderShop();
+            } else {
+                alert('Saldo tabunganmu kurang! Ayo kumpulkan lebih banyak uang dengan bermain.');
+            }
+        };
+
+        window.equipItem = function(type, color) {
+            if (type === 'block') selectedBlockColor = color;
+            if (type === 'basket') selectedBasketColor = color;
+            renderShop();
+        };
+
+        // --- MANAJEMEN TOMBOL ---
+        claimBtn.addEventListener('click', () => {
+            walletMoney += currentPrizePool; // Uang masuk tabungan selamanya tanpa batas maksimal!
+            currentPrizePool = 0;
+            rewardPopup.style.display = 'none';
+            renderShop();
+            startGame();
+        });
+
+        shopBtn.addEventListener('click', () => { shopWindow.style.display = 'flex'; renderShop(); });
+        closeShopBtn.addEventListener('click', () => { shopWindow.style.display = 'none'; });
+
+        // Sistem Input Tahan
+        leftBtn.addEventListener('mousedown', () => { inputState.left = true; });
+        leftBtn.addEventListener('mouseup', () => { inputState.left = false; });
+        leftBtn.addEventListener('mouseleave', () => { inputState.left = false; });
+        leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); inputState.left = true; });
+        leftBtn.addEventListener('touchend', () => { inputState.left = false; });
+
+        rightBtn.addEventListener('mousedown', () => { inputState.right = true; });
+        rightBtn.addEventListener('mouseup', () => { inputState.right = false; });
+        rightBtn.addEventListener('mouseleave', () => { inputState.right = false; });
+        rightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); inputState.right = true; });
+        rightBtn.addEventListener('touchend', () => { inputState.right = false; });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') inputState.left = true;
+            if (e.key === 'ArrowRight') inputState.right = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') inputState.le
