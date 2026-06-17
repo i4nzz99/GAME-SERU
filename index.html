@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Game: Neon Catcher Mega Shop Edition</title>
+    <title>Project Game: Neon Catcher RGB Shop Edition</title>
     <style>
         * {
             margin: 0;
@@ -14,15 +14,25 @@
             -webkit-user-select: none;
         }
 
+        /* Animasi untuk Efek RGB Berputar */
+        @keyframes rgbAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Background Utama Default */
         body {
             min-height: 100vh;
             background: #0d0e15;
+            background-size: 400% 400%; /* Penting untuk efek animasi RGB */
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             color: #fff;
             padding: 10px;
+            transition: background 0.5s ease;
         }
 
         .game-wrapper {
@@ -156,7 +166,7 @@
             text-align: left;
             font-size: 0.9rem;
             color: #00f2fe;
-            margin: 10px 0 5px 0;
+            margin: 15px 0 5px 0;
             text-transform: uppercase;
             font-weight: bold;
             letter-spacing: 1px;
@@ -178,6 +188,11 @@
             height: 25px;
             border-radius: 4px;
             box-shadow: 0 0 8px currentColor;
+        }
+
+        /* Preview Khusus untuk Item RGB */
+        .preview-rgb-rainbow {
+            background: linear-gradient(45deg, #ff0000, #ff7700, #ffdd00, #00ff00, #0000ff, #8b00ff);
         }
 
         .item-info {
@@ -276,6 +291,9 @@
 
             <div class="shop-section-title">Kategori 2: Skin Keranjang Basket</div>
             <div id="basketSkinsContainer"></div>
+
+            <div class="shop-section-title">Kategori 3: Tema Warna Tampilan</div>
+            <div id="themeSkinsContainer"></div>
         </div>
 
         <div class="reward-popup" id="rewardPopup">
@@ -305,6 +323,7 @@
         const closeShopBtn = document.getElementById('closeShopBtn');
         const blockSkinsContainer = document.getElementById('blockSkinsContainer');
         const basketSkinsContainer = document.getElementById('basketSkinsContainer');
+        const themeSkinsContainer = document.getElementById('themeSkinsContainer');
         const rewardPopup = document.getElementById('rewardPopup');
         const rewardText = document.getElementById('rewardText');
         const moneyAmount = document.getElementById('moneyAmount');
@@ -316,12 +335,13 @@
         let animationId;
         let currentPrizePool = 0;
 
-        // TABUNGAN UNLIMITED (Bisa bertambah tanpa batasan angka maksimal)
+        // TABUNGAN UNLIMITED
         let walletMoney = 0; 
 
         // Setelan Warna Terpilih Saat Ini
         let selectedBlockColor = '#9d4edd';
         let selectedBasketColor = '#00f2fe';
+        let selectedThemeId = 't_dark'; // Menggunakan ID untuk melacak tema aktif
 
         // DATABASE SKIN BALOK
         const blockSkins = [
@@ -337,6 +357,13 @@
             { id: 'k_gold', name: 'Mangkok Emas Sultan', price: 35000, color: '#ffaa00', owned: false }
         ];
 
+        // DATABASE TEMA BACKGROUND (Termasuk Pilihan RGB!)
+        const themeSkins = [
+            { id: 't_dark', name: 'Tema Bawaan (Gelap)', price: 0, isRGB: false, value: '#0d0e15', owned: true },
+            { id: 't_cyan', name: 'Neon Midnight (Biru)', price: 20000, isRGB: false, value: '#001a33', owned: false },
+            { id: 't_rgb', name: 'RAINBOW RGB WAVE (Animasi)', price: 50000, isRGB: true, value: 'linear-gradient(-45deg, #ff0055, #7928ca, #00f2fe, #4ffb7e)', owned: false }
+        ];
+
         const inputState = { left: false, right: false };
 
         const basket = {
@@ -348,7 +375,7 @@
 
         function drawBasket() {
             ctx.fillStyle = selectedBasketColor;
-            ctx.shadowBlur = selectedBasketColor === '#ffaa00' ? 15 : 0; // Efek glow jika pakai basket emas
+            ctx.shadowBlur = selectedBasketColor === '#ffaa00' ? 15 : 0;
             ctx.shadowColor = selectedBasketColor;
             ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
             ctx.shadowBlur = 0;
@@ -413,7 +440,6 @@
             ctx.textAlign = 'center';
             ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
 
-            // Perhitungan Hadiah: Tanpa batas penambahan uang masuk tabungan
             currentPrizePool = 0;
             if (score >= 10) {
                 let steps = Math.floor((score - 10) / 5);
@@ -441,89 +467,58 @@
             update();
         }
 
-        // --- SISTEM PEMBUAT DAFTAR BELANJA DI TOKO ---
+        // --- MANAJEMEN APLIKASI TEMA TAMPILAN TERMASUK RGB ---
+        function applyTheme(theme) {
+            if (theme.isRGB) {
+                document.body.style.background = theme.value;
+                document.body.style.animation = 'rgbAnimation 6s ease infinite';
+            } else {
+                document.body.style.background = theme.value;
+                document.body.style.animation = 'none'; // Matikan animasi kalau pakai tema warna biasa
+            }
+        }
+
+        // --- RENDER MENU KERANJANG BELANJA ---
         function renderShop() {
             shopWallet.textContent = `Rp ${walletMoney.toLocaleString('id-ID')}`;
             walletDisplay.textContent = `Rp ${walletMoney.toLocaleString('id-ID')}`;
             
-            // Render Bagian Balok
+            // 1. Render Skin Balok
             blockSkinsContainer.innerHTML = '';
             blockSkins.forEach((skin) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'shop-item';
                 let btnHTML = skin.owned ? 
-                    (selectedBlockColor === skin.color ? `<button class="btn-buy active-skin">DIGUNAKAN</button>` : `<button class="btn-buy owned" onclick="equipItem('block', '${skin.color}')">PAKAI</button>`) :
+                    (selectedBlockColor === skin.color ? `<button class="btn-buy active-skin">DIGUNAKAN</button>` : `<button class="btn-buy owned" onclick="equipItem('block', '${skin.id}')">PAKAI</button>`) :
                     `<button class="btn-buy" onclick="buyItem('block', '${skin.id}', ${skin.price})">BELI</button>`;
                 
                 itemDiv.innerHTML = `<div class="item-preview" style="background:${skin.color}"></div><div class="item-info"><div class="item-name">${skin.name}</div><div class="item-price">${skin.price===0?'Gratis':'Rp '+skin.price.toLocaleString('id-ID')}</div></div>${btnHTML}`;
                 blockSkinsContainer.appendChild(itemDiv);
             });
 
-            // Render Bagian Basket/Mangkok
+            // 2. Render Skin Basket
             basketSkinsContainer.innerHTML = '';
             basketSkins.forEach((skin) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'shop-item';
                 let btnHTML = skin.owned ? 
-                    (selectedBasketColor === skin.color ? `<button class="btn-buy active-skin">DIGUNAKAN</button>` : `<button class="btn-buy owned" onclick="equipItem('basket', '${skin.color}')">PAKAI</button>`) :
+                    (selectedBasketColor === skin.color ? `<button class="btn-buy active-skin">DIGUNAKAN</button>` : `<button class="btn-buy owned" onclick="equipItem('basket', '${skin.id}')">PAKAI</button>`) :
                     `<button class="btn-buy" onclick="buyItem('basket', '${skin.id}', ${skin.price})">BELI</button>`;
                 
                 itemDiv.innerHTML = `<div class="item-preview" style="background:${skin.color}; height:10px;"></div><div class="item-info"><div class="item-name">${skin.name}</div><div class="item-price">${skin.price===0?'Gratis':'Rp '+skin.price.toLocaleString('id-ID')}</div></div>${btnHTML}`;
                 basketSkinsContainer.appendChild(itemDiv);
             });
-        }
 
-        // Fungsi Global Aksi Beli dan Pakai Barang Toko
-        window.buyItem = function(type, id, price) {
-            if (walletMoney >= price) {
-                walletMoney -= price;
-                if (type === 'block') {
-                    const skin = blockSkins.find(s => s.id === id);
-                    skin.owned = true; selectedBlockColor = skin.color;
-                } else {
-                    const skin = basketSkins.find(s => s.id === id);
-                    skin.owned = true; selectedBasketColor = skin.color;
-                }
-                renderShop();
-            } else {
-                alert('Saldo tabunganmu kurang! Ayo kumpulkan lebih banyak uang dengan bermain.');
-            }
-        };
+            // 3. Render Tema Warna Tampilan Website (Termasuk RGB)
+            themeSkinsContainer.innerHTML = '';
+            themeSkins.forEach((skin) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'shop-item';
+                let btnHTML = skin.owned ? 
+                    (selectedThemeId === skin.id ? `<button class="btn-buy active-skin">DIGUNAKAN</button>` : `<button class="btn-buy owned" onclick="equipItem('theme', '${skin.id}')">PAKAI</button>`) :
+                    `<button class="btn-buy" onclick="buyItem('theme', '${skin.id}', ${skin.price})">BELI</button>`;
+                
+                let previewClass = skin.isRGB ? 'item-preview preview-rgb-rainbow' : 'item-preview';
+                let previewStyle = skin.isRGB ? '' : `background:${skin.value}; border: 1px solid #fff;`;
 
-        window.equipItem = function(type, color) {
-            if (type === 'block') selectedBlockColor = color;
-            if (type === 'basket') selectedBasketColor = color;
-            renderShop();
-        };
-
-        // --- MANAJEMEN TOMBOL ---
-        claimBtn.addEventListener('click', () => {
-            walletMoney += currentPrizePool; // Uang masuk tabungan selamanya tanpa batas maksimal!
-            currentPrizePool = 0;
-            rewardPopup.style.display = 'none';
-            renderShop();
-            startGame();
-        });
-
-        shopBtn.addEventListener('click', () => { shopWindow.style.display = 'flex'; renderShop(); });
-        closeShopBtn.addEventListener('click', () => { shopWindow.style.display = 'none'; });
-
-        // Sistem Input Tahan
-        leftBtn.addEventListener('mousedown', () => { inputState.left = true; });
-        leftBtn.addEventListener('mouseup', () => { inputState.left = false; });
-        leftBtn.addEventListener('mouseleave', () => { inputState.left = false; });
-        leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); inputState.left = true; });
-        leftBtn.addEventListener('touchend', () => { inputState.left = false; });
-
-        rightBtn.addEventListener('mousedown', () => { inputState.right = true; });
-        rightBtn.addEventListener('mouseup', () => { inputState.right = false; });
-        rightBtn.addEventListener('mouseleave', () => { inputState.right = false; });
-        rightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); inputState.right = true; });
-        rightBtn.addEventListener('touchend', () => { inputState.right = false; });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') inputState.left = true;
-            if (e.key === 'ArrowRight') inputState.right = true;
-        });
-        document.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowLeft') inputState.le
+                itemDiv.innerHTML = `<div class="${previewClass}" style="${previewStyle}"></div><div class="item-info"><div c
